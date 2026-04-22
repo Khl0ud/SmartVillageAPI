@@ -55,8 +55,5 @@ csx/
 wwwroot/recordings/
 C:\MediaRecords/
 
-# Swagger generated file
-swagger.json
-
 # Tool manifest
 .config/dotnet-tools.json
