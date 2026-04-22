@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.ComponentModel.DataAnnotations.Schema;
 using SmartVillageAPI.Model;
 public class Camera
 {
@@ -20,7 +21,11 @@ public class Recording
 {
     public int Id { get; set; }
     public int CameraId { get; set; }
-    public string FileUrl { get; set; } 
+    public string FileUrl { get; set; }
+
+    [NotMapped]
+    public string FullVideoUrl { get; set; }
+
     public DateTime RecordedAt { get; set; }
 
     public Camera Camera { get; set; }

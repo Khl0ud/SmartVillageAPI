@@ -64,11 +64,53 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddControllers();
 
-// --- 6. Swagger مع دعم الـ JWT ---
+// --- 6. Swagger ---
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(); // تأكدي من وجودها لفتح Swagger
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Smart Village API",
+        Version = "v1",
+        Description = "API for Smart Village Management System"
+    });
+
+    // إضافة دعم JWT في Swagger
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Enter your JWT token in the text input below.\r\n\r\nExample: \"12345abcdef\""
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
 
 var app = builder.Build();
+
+// تفعيل Swagger في جميع البيئات (Development & Production)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Smart Village API v1");
+    c.RoutePrefix = "swagger"; // الوصول عبر /swagger
+});
 
 // --- إعدادات الملفات الثابتة (Static Files) ---
 app.UseStaticFiles(); // لملفات wwwroot العادية
