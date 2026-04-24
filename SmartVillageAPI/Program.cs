@@ -104,6 +104,27 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// --- 7. Automatic Database Migration/Creation ---
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        // Ensure the database is created and any pending migrations are applied
+        context.Database.Migrate();
+
+        // Seed data
+        await DbInitializer.Seed(app.Services);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating or initializing the database.");
+    }
+}
+
+
 // تفعيل Swagger في جميع البيئات (Development & Production)
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -137,5 +158,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<SmartVillageHub>("/villageHub");
+app.MapHub<ChatHub>("/chatHub");
 
-app.Run();
+app.Run("http://0.0.0.0:5000");

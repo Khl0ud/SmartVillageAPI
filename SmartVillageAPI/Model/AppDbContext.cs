@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace SmartVillageAPI.Model
@@ -19,6 +19,7 @@ namespace SmartVillageAPI.Model
         public DbSet<WasteCollectionRequest> WasteCollectionRequests { get; set; }
         public DbSet<Camera> Cameras { get; set; }
         public DbSet<Recording> Recordings { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -41,6 +42,19 @@ namespace SmartVillageAPI.Model
                 .HasOne(z => z.AutomationSetting)
                 .WithOne(a => a.Zone)
                 .HasForeignKey<AutomationSetting>(a => a.ZoneId);
+
+            // ChatMessage Relationships
+            builder.Entity<ChatMessage>()
+                .HasOne(m => m.Sender)
+                .WithMany()
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ChatMessage>()
+                .HasOne(m => m.Receiver)
+                .WithMany()
+                .HasForeignKey(m => m.ReceiverId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

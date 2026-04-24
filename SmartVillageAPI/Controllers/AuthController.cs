@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using SmartVillageAPI.DTOs;
@@ -65,6 +66,86 @@ namespace SmartVillageAPI.Controllers
             }
 
             return Unauthorized(new AuthModel { Message = "Invalid email or password", IsAuthenticated = false });
+        }
+
+        // 3. الحصول على بيانات البروفايل
+        [Authorize]
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetProfile()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+                return NotFound(new { Message = "User not found" });
+
+            var profile = new ProfileDto
+            {
+                Id = user.Id,
+                FullName = user.FullName,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber,
+                WalletBalance = user.WalletBalance
+            };
+
+            return Ok(profile);
+        }
+
+        // 4. تحديث بيانات البروفايل
+        [Authorize]
+        [HttpPut("update-profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto model)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+                return NotFound(new { Message = "User not found" });
+
+            user.FullName = model.FullName;
+            user.PhoneNumber = model.PhoneNumber;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                return BadRequest(new { Message = errors });
+            }
+
+            return Ok(new { Message = "Profile updated successfully" });
+        }
+
+        // 5. تغيير كلمة السر
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto model)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+                return NotFound(new { Message = "User not found" });
+
+            var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                return BadRequest(new { Message = errors });
+            }
+
+            return Ok(new { Message = "Password changed successfully" });
+        }
+
+        // 5. تسجيل الخروج
+        [Authorize]
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            // في حالة الـ JWT الـ logout بيتم غالباً في الموبايل بمسح التوكن
+            // لكن بنعمل Endpoint هنا عشان الموبايل ينادي عليه لو محتاج يمسح حاجة في السيرفر أو للتأكيد
+            return Ok(new { Message = "Logged out successfully" });
         }
 
         // --- دالة مساعدة لتوليد التوكن (عشان نمنع تكرار الكود) ---

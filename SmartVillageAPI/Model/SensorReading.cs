@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SmartVillageAPI.Model
@@ -13,6 +13,6 @@ namespace SmartVillageAPI.Model
 
         [ForeignKey("Device")]
         public int DeviceId { get; set; }
-        public Device Device { get; set; }
+        public Device? Device { get; set; }
     }
 }
