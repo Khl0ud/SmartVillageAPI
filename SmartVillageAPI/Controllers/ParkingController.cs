@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartVillageAPI.Model;
@@ -22,63 +22,61 @@ namespace SmartVillageAPI.Controllers
         }
 
         // 1. عرض بيانات الداشبورد (رصيد، عدد الأماكن الفاضية)
-        [HttpGet("Dashboard/{zoneId}")]
-        public async Task<IActionResult> GetDashboard(int zoneId)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var user = await _context.Users.FindAsync(userId);
+ // 1. Dashboard - Fix state checks
+[HttpGet("Dashboard/{zoneId}")]
+public async Task<IActionResult> GetDashboard(int zoneId)
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var user = await _context.Users.FindAsync(userId);
 
-            // نجيب الـ 3 ركنات بتوعك
-            var spots = await _context.Devices.Where(d => d.ZoneId == zoneId).ToListAsync();
+    var spots = await _context.Devices.Where(d => d.ZoneId == zoneId).ToListAsync();
 
-            int totalSpots = spots.Count;
-            int available = spots.Count(s => s.CurrentState == "0");
-            int occupied = spots.Count(s => s.CurrentState == "1");
-            int reserved = spots.Count(s => s.CurrentState == "Reserved");
+    int totalSpots = spots.Count;
+    int available = spots.Count(s => s.CurrentState == "0");        // ✅ "0" = free
+    int occupied  = spots.Count(s => s.CurrentState == "1");        // ✅ "1" = occupied
+    int reserved  = spots.Count(s => s.CurrentState == "Reserved"); // ✅ keep as-is
 
-            return Ok(new
-            {
-                WalletBalance = user.WalletBalance,
-                TotalSpaces = totalSpots, // هترجع 3
-                Available = available,
-                Occupied = occupied,
-                Reserved = reserved
-            });
-        }
+    return Ok(new
+    {
+        WalletBalance  = user.WalletBalance,
+        TotalSpaces    = totalSpots,
+        Available      = available,
+        Occupied       = occupied,
+        Reserved       = reserved
+    });
+}
 
-        // 2. حجز ركنة (New Reservation)
-        [HttpPost("Reserve")]
-        public async Task<IActionResult> ReserveSpot([FromBody] ReservationDto request)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var user = await _context.Users.FindAsync(userId);
+// 2. ReserveSpot - Fix the availability check to match "0"
+[HttpPost("Reserve")]
+public async Task<IActionResult> ReserveSpot([FromBody] ReservationDto request)
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var user = await _context.Users.FindAsync(userId);
 
-            // مثلاً الحجز بخصم 10 دولار
-            if (user.WalletBalance < 10)
-                return BadRequest(new { Message = "Insufficient wallet balance. Please add funds." });
+    if (user.WalletBalance < 10)
+        return BadRequest(new { Message = "Insufficient wallet balance. Please add funds." });
 
-            var spot = await _context.Devices.FindAsync(request.DeviceId);
-            if (spot == null || spot.CurrentState != "Available")
-                return BadRequest(new { Message = "Spot is not available." });
+    var spot = await _context.Devices.FindAsync(request.DeviceId);
+    if (spot == null || spot.CurrentState != "0")   // ✅ was "Available", now "0"
+        return BadRequest(new { Message = "Spot is not available." });
 
-            // خصم الفلوس وتغيير حالة الركنة
-            user.WalletBalance -= 10;
-            spot.CurrentState = "Reserved";
+    user.WalletBalance -= 10;
+    spot.CurrentState = "Reserved";
 
-            var reservation = new ParkingReservation
-            {
-                UserId = userId,
-                DeviceId = request.DeviceId,
-                PlateNumber = request.PlateNumber,
-                StartTime = request.StartTime,
-                EndTime = request.EndTime
-            };
+    var reservation = new ParkingReservation
+    {
+        UserId      = userId,
+        DeviceId    = request.DeviceId,
+        PlateNumber = request.PlateNumber,
+        StartTime   = request.StartTime,
+        EndTime     = request.EndTime
+    };
 
-            _context.ParkingReservations.Add(reservation);
-            await _context.SaveChangesAsync();
+    _context.ParkingReservations.Add(reservation);
+    await _context.SaveChangesAsync();
 
-            return Ok(new { Message = "Spot reserved successfully!", NewBalance = user.WalletBalance });
-        }
+    return Ok(new { Message = "Spot reserved successfully!", NewBalance = user.WalletBalance });
+}
 
         // 3. عرض حجوزاتي (My Bookings)
         [HttpGet("MyBookings")]
@@ -130,7 +128,7 @@ namespace SmartVillageAPI.Controllers
     public class ReservationDto
     {
         public int DeviceId { get; set; }
-        public string? PlateNumber { get; set; }
+        public string PlateNumber { get; set; }
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
     }
