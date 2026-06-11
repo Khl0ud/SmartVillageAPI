@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -130,6 +130,19 @@ namespace SmartVillageAPI.Controllers
             }
 
             return Ok(new { Message = "All devices are already registered." });
+        }
+        //logs for the rfid home gate
+        [HttpGet("AccessLogs/{deviceId}")]
+        //[Authorize]
+        public async Task<IActionResult> GetAccessLogs(int deviceId)
+        {
+            var logs = await _context.ActivityLogs
+                .Where(l => l.DeviceId == deviceId && l.Details != null && l.Details.Contains("to 'OPEN'"))
+                .OrderByDescending(l => l.CreatedAt)
+                .Take(50)
+                .Select(l => new { l.CreatedAt })
+                .ToListAsync();
+            return Ok(logs);
         }
         // 4. التحكم الجماعي في الأجهزة (All On / All Off / Lock All)
         [HttpPost("ControlBulk")]
