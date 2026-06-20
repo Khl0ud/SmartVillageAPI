@@ -7,6 +7,7 @@ using SmartVillageAPI.Hubs;
 using SmartVillageAPI.Model;
 using SmartVillageAPI.Services;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace SmartVillageAPI.Controllers
 {
@@ -362,6 +363,60 @@ namespace SmartVillageAPI.Controllers
         }
 
         // ============================================================
+        // 12. تعيين حالة النظام (Auto/Manual)
+        // POST /api/Irrigation/SetSystemMode
+        // ============================================================
+        [HttpPost("SetSystemMode")]
+        public async Task<IActionResult> SetSystemMode([FromBody] SystemModeDto mode)
+        {
+            try
+            {
+                // تخزين حالة Auto/Manual في ملف JSON
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "system_mode.json");
+                var json = JsonSerializer.Serialize(new { isAuto = mode.IsAuto });
+                await System.IO.File.WriteAllTextAsync(filePath, json);
+
+                // إبلاغ ESP32 بالتغيير عبر MQTT
+                await _mqttService.PublishAsync("FadiSmartVillage2026/irrigation/system/mode", mode.IsAuto ? "AUTO" : "MANUAL");
+
+                return Ok(new { Message = "System mode updated successfully", IsAuto = mode.IsAuto });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Error updating system mode", Error = ex.Message });
+            }
+        }
+
+        // ============================================================
+        // 13. جلب حالة النظام (Auto/Manual)
+        // GET /api/Irrigation/GetSystemMode
+        // ============================================================
+        [HttpGet("GetSystemMode")]
+        public IActionResult GetSystemMode()
+        {
+            try
+            {
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "system_mode.json");
+
+                if (!System.IO.File.Exists(filePath))
+                {
+                    // Default to Auto if file doesn't exist
+                    return Ok(new { isAuto = true });
+                }
+
+                var json = System.IO.File.ReadAllText(filePath);
+                var mode = JsonSerializer.Deserialize<SystemModeDto>(json);
+
+                return Ok(new { isAuto = mode?.IsAuto ?? true });
+            }
+            catch (Exception ex)
+            {
+                // Default to Auto on error
+                return Ok(new { isAuto = true });
+            }
+        }
+
+        // ============================================================
         // Helper Methods
         // ============================================================
 
@@ -492,5 +547,11 @@ namespace SmartVillageAPI.Controllers
         public string? UserId { get; set; }
         public double MoistureThreshold { get; set; } = 40.0;
         public SmartVillageAPI.Model.PlantType PlantType { get; set; } = SmartVillageAPI.Model.PlantType.None;
+    }
+
+    // DTO لتخزين حالة Auto/Manual
+    public class SystemModeDto
+    {
+        public bool IsAuto { get; set; }
     }
 }
