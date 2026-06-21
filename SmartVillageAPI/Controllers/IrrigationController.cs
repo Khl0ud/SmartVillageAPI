@@ -367,14 +367,26 @@ namespace SmartVillageAPI.Controllers
         // POST /api/Irrigation/SetSystemMode
         // ============================================================
         [HttpPost("SetSystemMode")]
+        [AllowAnonymous]
         public async Task<IActionResult> SetSystemMode([FromBody] SystemModeDto mode)
         {
             try
             {
-                // تخزين حالة Auto/Manual في ملف JSON
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "system_mode.json");
-                var json = JsonSerializer.Serialize(new { isAuto = mode.IsAuto });
-                await System.IO.File.WriteAllTextAsync(filePath, json);
+                // Get or create system mode record (always use Id = 1)
+                var systemMode = await _context.SystemModes.FindAsync(1);
+                if (systemMode == null)
+                {
+                    systemMode = new SystemMode { Id = 1, IsAuto = mode.IsAuto };
+                    _context.SystemModes.Add(systemMode);
+                }
+                else
+                {
+                    systemMode.IsAuto = mode.IsAuto;
+                    systemMode.LastUpdated = DateTime.UtcNow;
+                    _context.SystemModes.Update(systemMode);
+                }
+
+                await _context.SaveChangesAsync();
 
                 // إبلاغ ESP32 بالتغيير عبر MQTT
                 await _mqttService.PublishAsync("FadiSmartVillage2026/irrigation/system/mode", mode.IsAuto ? "AUTO" : "MANUAL");
@@ -392,22 +404,21 @@ namespace SmartVillageAPI.Controllers
         // GET /api/Irrigation/GetSystemMode
         // ============================================================
         [HttpGet("GetSystemMode")]
-        public IActionResult GetSystemMode()
+        [AllowAnonymous]
+        public async Task<IActionResult> GetSystemMode()
         {
             try
             {
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "system_mode.json");
-
-                if (!System.IO.File.Exists(filePath))
+                var systemMode = await _context.SystemModes.FindAsync(1);
+                if (systemMode == null)
                 {
-                    // Default to Auto if file doesn't exist
-                    return Ok(new { isAuto = true });
+                    // Create default record if doesn't exist
+                    systemMode = new SystemMode { Id = 1, IsAuto = true };
+                    _context.SystemModes.Add(systemMode);
+                    await _context.SaveChangesAsync();
                 }
 
-                var json = System.IO.File.ReadAllText(filePath);
-                var mode = JsonSerializer.Deserialize<SystemModeDto>(json);
-
-                return Ok(new { isAuto = mode?.IsAuto ?? true });
+                return Ok(new { isAuto = systemMode.IsAuto });
             }
             catch (Exception ex)
             {

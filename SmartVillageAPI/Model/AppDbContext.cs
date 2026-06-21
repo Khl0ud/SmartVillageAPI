@@ -20,6 +20,7 @@ namespace SmartVillageAPI.Model
         public DbSet<WasteCollectionRequest> WasteCollectionRequests { get; set; }
         public DbSet<IrrigationZone> IrrigationZones { get; set; }
         public DbSet<IrrigationLog> IrrigationLogs { get; set; }
+        public DbSet<SystemMode> SystemModes { get; set; }
         public DbSet<Camera> Cameras { get; set; }
         public DbSet<Recording> Recordings { get; set; }
 

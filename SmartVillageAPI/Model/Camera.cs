@@ -40,11 +40,4 @@ namespace SmartVillageAPI.Model
 
         public Camera? Camera { get; set; }
     }
-
-    public class CameraSettings
-    {
-        // default resolves at runtime in Program.cs
-        public string RecordingsPath { get; set; } =
-            Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "MediaRecords");
-    }
 }
